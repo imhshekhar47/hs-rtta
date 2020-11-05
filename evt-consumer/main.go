@@ -1,12 +1,11 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-
-	model "github.com/imhshekhar47/hs-rtta/evt-model"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/imhshekhar47/hs-rtta/common"
+	model "github.com/imhshekhar47/hs-rtta/evt-model"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -20,25 +19,32 @@ func main() {
 	consumer, err := kafka.NewConsumer(config)
 
 	if err != nil {
-		panic("Failed to start consumer")
+		log.Fatalf("Failed to start consumer: %v\n", err)
+		panic(err)
 	}
 
 	topics := []string{"trades"}
 	consumer.SubscribeTopics(topics, nil)
 
+	log.Infoln("Consumer ready")
 	for {
 		message, err := consumer.ReadMessage(-1)
 		if err != nil {
-			log.Println(fmt.Sprintf("Error: %v", err))
+			log.Errorf("Error: %v\n", err)
 		} else {
-			var call model.TradeCall
-			err := json.Unmarshal(message.Value, &call)
+			call := &model.TradeCall{}
+			err := proto.Unmarshal([]byte(message.Value), call)
 			if err != nil {
-				log.Fatal("Could not deserialize message")
+				log.Errorf("Error: %v\n", err)
 			}
-			log.Println(fmt.Sprintf("Message[%s]: %v", message.TopicPartition, call))
+			json, err := common.SerializeToJSON(call)
+			if err != nil {
+				log.Errorf("Failed to build JSON: %v\n", err)
+			}
+			log.Infof("Recieved [%s]: %s\n", message.TopicPartition, string(json))
+
 		}
 	}
-	log.Println("Closing consumer")
 	consumer.Close()
+	log.Infoln("Consumer done")
 }

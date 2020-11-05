@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+
+option go_package=".;model";
+
+package model;
+
+import "google/protobuf/timestamp.proto";
+
+enum CallType {
+    UNKNOWN = 0;
+    BUY = 1;
+    SELL = 2;
+}
+
+message TradeCall {
+    CallType action  = 1;
+    string stock  = 2;
+    int32 units   =3;
+    float price  = 4;
+    google.protobuf.Timestamp time  = 5;
+}
